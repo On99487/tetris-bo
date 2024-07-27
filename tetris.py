@@ -38,7 +38,7 @@ class Tetrisgame:
         self.start()
 
     def start(self):
-        data = np.load("test.npz")
+        data = None
 
         for x in range(POPULATION):
             self.addplayer()
@@ -162,16 +162,16 @@ class Tetrisgame:
             print("fitness:", b.fitness)
         a = self.player[0]
         b = self.player[1]
-        np.savez(
+        """np.savez(
             "test.npz",
-            a=a.nnet.weight_input_hidden1,
+            a=a.nnet.weight_input_hidden1,  
             b=a.nnet.weight_hidden1_hidden2,
             c=a.nnet.weight_hidden2_output,
             d=b.nnet.weight_input_hidden1,
             e=b.nnet.weight_hidden1_hidden2,
             f=b.nnet.weight_hidden2_output,
         )
-
+        """
         cut_off = int(len(self.player) * MUTATION_CUT_OFF)
         good_player = self.player[0:cut_off]
         bad_player = self.player[cut_off:]
@@ -205,3 +205,95 @@ class Tetrisgame:
                     new_player.nnet.modify_weights_offspring()
                 new_players.append(new_player)
         self.player = new_players
+
+
+class Singleplayer:
+    def __init__(self, boardwidth, boardheight, gravity=60, tolerant=120):
+        self.frame = 0
+        self.ppf = 1
+        self.gravity = gravity
+        self.tolerant = tolerant
+        self.width = boardwidth
+        self.height = boardheight
+        self.player = []
+        self.alive = []
+        self.drawpieces()
+        self.playercount = 2
+        self.playerleft = 0
+
+    def reset(self):
+        self.playerleft = len(self.player)
+        self.frame = 0
+        self.alive = []
+        for player in self.player:
+            player.reset()
+            self.alive.append(player)
+            self.target()
+        self.drawpieces()
+
+    def gamestep(self):
+        self.frame += 1
+        self.playerleft = len(self.alive)
+        for player in self.alive:
+            player.gamestep()
+        if self.playerleft <= 0:
+            for player in self.alive:
+                self.winner = player
+                print(self.winner)
+            print("winreset")
+            self.reset()
+
+    def drawpieces(self):
+        bag = []
+        drawed = []
+        for x in range(7):
+            ran = random.randint(1, 7)
+            repeated = False
+            for piece in drawed:
+                if ran == piece:
+                    repeated = True
+            while repeated == True:
+                repeated = False
+                ran = random.randint(1, 7)
+                for piece in drawed:
+                    if ran == piece:
+                        repeated = True
+            bag.append(ran)
+            drawed.append(ran)
+        for player in self.alive:
+            player.sequel.extend(bag)
+        return
+
+    def target(self):
+        if len(self.player) == 2:
+            self.player[0].target = self.player[1]
+            self.player[1].target = self.player[0]
+        elif len(self.player) > 2:
+            for player1 in self.alive:
+                while player1.target == None:
+                    playerchosen = random.choice(self.player)
+                    if (
+                        player1 == playerchosen
+                        or playerchosen.targeted
+                        or playerchosen.target == player1
+                    ):
+                        continue
+                    else:
+                        player1.target = playerchosen
+
+    def topout(self, player):
+        if player in self.alive:
+            self.alive.remove(player)
+        self.target()
+
+    def addplayer(self, ishuman=False):
+        if ishuman:
+            newplayer = player.Player(self)
+            self.player.append(newplayer)
+            self.alive.append(newplayer)
+            return newplayer
+        else:
+            newplayer = player.Player(self)
+            self.player.append(newplayer)
+            self.alive.append(newplayer)
+            return newplayer

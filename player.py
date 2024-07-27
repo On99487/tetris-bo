@@ -37,7 +37,7 @@ class Player:
         self.pps = 0
         # start
         self.reset()
-        self.nnet1 = Nnet(232, 10, 10, 10 + 4)
+        self.nnet = Nnet(239, 10, 10, 10 + 4)
 
     def reset(self):
         self.board = np.zeros((self.height, self.width)).tolist()

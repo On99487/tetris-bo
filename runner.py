@@ -4,7 +4,7 @@ import time
 import math
 
 from player import Player, CURRENTPIECE
-import tetris as tt 
+import tetris as tt
 
 pygame.init()
 black = (0, 0, 0)
@@ -476,7 +476,7 @@ while True:
             if event.key == pygame.K_i:
                 humanplayer.spin180()
             if event.key == pygame.K_s:
-                tetrisgame.savebest()
+                humanplayer.lowestpossiblemove(8, humanplayer.rotation)
             if event.key == pygame.K_l:
                 humanplayer.hold()
             if event.key == pygame.K_r:
@@ -531,14 +531,28 @@ while True:
         click, _, _ = pygame.mouse.get_pressed()
         if click:
             mouse = pygame.mouse.get_pos()
-            if humanbutton.collidepoint(mouse):
-                humanplay = True
+            if aibutton.collidepoint(mouse):
+                aiplayer = True
                 if tetrisgame == None:
                     tetrisgame = tt.Tetrisgame(width, height, ppf=ppf, gravity=gravity)
                 starttime = pygame.time.get_ticks()
                 currenttime = pygame.time.get_ticks()
-    elif humanplay:
-        aiplayer = False
+            if humanbutton.collidepoint(mouse):
+
+                humanplay = True
+                if tetrisgame == None:
+                    tetrisgame = tt.Singleplayer(width, height, gravity=gravity)
+                    for x in range(tetrisgame.playercount):
+                        if x == 0:
+                            humanplayer = tetrisgame.addplayer()
+                            humanplayer.human = True
+                        else:
+                            tetrisgame.addplayer()
+
+                starttime = pygame.time.get_ticks()
+                currenttime = pygame.time.get_ticks()
+    elif aiplayer:
+        humanplay = False
         if tetrisgame.playerleft <= 0:
             tetrisgame.gamestep()
             continue
@@ -594,5 +608,53 @@ while True:
             size=mediumFont,
             background=True,
         )
-    # if humanplay:
+    elif humanplay:
+        aiplayer = False
+        if tetrisgame.playerleft <= 0:
+            tetrisgame.gamestep()
+            continue
+        row = round(math.sqrt(tetrisgame.playerleft))
+        colume = round(math.sqrt(tetrisgame.playerleft) + 0.49)
+        displayscale = 1 / round(math.sqrt(tetrisgame.playerleft))
+        playerFont = pygame.font.Font("OpenSans-Regular.ttf", round(40 * displayscale))
+        blockdimension = round(30 * displayscale)
+        outerborderwidth = round(5 * displayscale)
+        innerborderwidth = round(1 * displayscale)
+        for i, player in enumerate(tetrisgame.alive):
+            boardRect = pygame.Rect(
+                0,
+                0,
+                (blockdimension + innerborderwidth) * tetrisgame.width
+                - innerborderwidth
+                + 2 * outerborderwidth,
+                (blockdimension + innerborderwidth) * (tetrisgame.height)
+                - innerborderwidth
+                + outerborderwidth,
+            )
+            boardRect.center = (
+                screenwidth * (i % colume + 0.5) / colume,
+                screenheight * (round(i / colume - 0.01) % row + 0.5) / row,
+            )
+            pygame.draw.rect(screen, white, boardRect)
+
+            displayblock(boardRect, player)
+            if len(player.sequel) > 4:
+                displaybag(boardRect, player)
+            displayhold(boardRect, player)
+            displaystat(boardRect, player)
+        tetrisgame.gamestep()
+        displaylabel(
+            round(tetrisgame.frame / 60, 1),
+            "Time",
+            topleft=(0, 40),
+            size=mediumFont,
+            background=True,
+        )
+        displaylabel(
+            tetrisgame.playerleft,
+            "Player left:",
+            topleft=(0, 80),
+            size=mediumFont,
+            background=True,
+        )
     pygame.display.update()
