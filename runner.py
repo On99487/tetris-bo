@@ -4,8 +4,7 @@ import time
 import math
 
 from player import Player, CURRENTPIECE
-import tetris as tt
-from dev import FPS, POPULATION
+import tetris as tt 
 
 pygame.init()
 black = (0, 0, 0)
@@ -477,7 +476,7 @@ while True:
             if event.key == pygame.K_i:
                 humanplayer.spin180()
             if event.key == pygame.K_s:
-                humanplayer.softdrop()
+                tetrisgame.savebest()
             if event.key == pygame.K_l:
                 humanplayer.hold()
             if event.key == pygame.K_r:
@@ -488,7 +487,7 @@ while True:
                     fps = 240
                 else:
                     display = True
-                    fps = 10
+                    fps = 60
     screen.fill(background)
     dt = clock.tick(fps)
     gametime += dt
@@ -536,12 +535,6 @@ while True:
                 humanplay = True
                 if tetrisgame == None:
                     tetrisgame = tt.Tetrisgame(width, height, ppf=ppf, gravity=gravity)
-                    for player in range(POPULATION):
-                        if player == 0:
-                            humanplayer = tetrisgame.addplayer(True)
-                        else:
-                            tetrisgame.addplayer()
-
                 starttime = pygame.time.get_ticks()
                 currenttime = pygame.time.get_ticks()
     elif humanplay:

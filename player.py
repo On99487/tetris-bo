@@ -27,7 +27,6 @@ class Player:
         self.tolerant = Tetrisgame.tolerant
         self.human = False
         self.toppedout = False
-        self.aitrial = 0
         # static
         self.frame = 0
         self.linesclear = 0
@@ -38,7 +37,7 @@ class Player:
         self.pps = 0
         # start
         self.reset()
-        self.nnet = Nnet(240, 16, 16, 23 + 10 + 4)
+        self.nnet1 = Nnet(232, 10, 10, 10 + 4)
 
     def reset(self):
         self.board = np.zeros((self.height, self.width)).tolist()
@@ -85,7 +84,7 @@ class Player:
         if self.tolerantframe % self.tolerant == 0:
             self.gravityfall()
         # if self.gravityframe % self.gravity == 0:
-        # self.gravityfall()
+        #    self.gravityfall()
         self.aiframe += 1
         # 4 take input
         # match input:
@@ -95,8 +94,6 @@ class Player:
             if self.checkdrop():
 
                 self.drop()
-            else:
-                self.aitrial += 1
         #    case
         # 5 update piece and board
         else:
@@ -246,10 +243,12 @@ class Player:
             self.position = (self.position[0], self.position[1] + 1)
             self.updateposition()
 
-    def checkdrop(self, position=None):
+    def checkdrop(self, position=None, rotation=None):
         piece = self.currentpiece
         if position == None:
             position = self.position
+        if rotation == None:
+            rotation = self.rotation
         y = position[1]
         x = position[0]
         match piece:
@@ -261,7 +260,7 @@ class Player:
                 ):
                     return True
             case 2:
-                match self.rotation:
+                match rotation:
                     case 1:
                         if self.height - 1 - y == 1:
                             return True
@@ -293,7 +292,7 @@ class Player:
                         if not ((self.board[y + 4][x + 1] == 0)):
                             return True
             case 3:
-                match self.rotation:
+                match rotation:
                     case 1:
                         if self.height - 1 - y == 1:
                             return True
@@ -329,7 +328,7 @@ class Player:
                         ):
                             return True
             case 4:
-                match self.rotation:
+                match rotation:
                     case 1:
                         if self.height - 1 - y == 1:
                             return True
@@ -365,7 +364,7 @@ class Player:
                         ):
                             return True
             case 5:
-                match self.rotation:
+                match rotation:
                     case 1:
                         if self.height - 1 - y == 1:
                             return True
@@ -401,7 +400,7 @@ class Player:
                         ):
                             return True
             case 6:
-                match self.rotation:
+                match rotation:
                     case 1:
                         if self.height - 1 - y == 1:
                             return True
@@ -437,7 +436,7 @@ class Player:
                         ):
                             return True
             case 7:
-                match self.rotation:
+                match rotation:
                     case 1:
                         if self.height - 1 - y == 1:
                             return True
@@ -472,6 +471,55 @@ class Player:
                             and (self.board[y + 3][x + 1] == 0)
                         ):
                             return True
+
+    def lowestpossiblemove(self, colume, rotation):
+        x = -1
+        match self.currentpiece:
+            case 1:
+                x = colume
+                if colume > 10 - 2:
+                    x = 10 - 2
+            case 2:
+                match rotation:
+                    case 1:
+                        x = colume
+                        if colume > 10 - 4:
+                            x = 10 - 4
+                    case 2:
+                        x = colume - 2
+                    case 3:
+                        x = colume
+                        if colume > 10 - 4:
+                            x = 10 - 4
+                    case 4:
+                        x = colume - 1
+            case 3 | 4 | 5 | 6 | 7:
+                match rotation:
+                    case 1:
+                        x = colume
+                        if colume > 10 - 3:
+                            x = 10 - 3
+                    case 2:
+                        x = colume - 1
+                        if colume > 10 - 2:
+                            x = 10 - 2
+                    case 3:
+                        x = colume
+                        if colume > 10 - 3:
+                            x = 10 - 3
+                    case 4:
+                        x = colume
+                        if colume > 10 - 2:
+                            x = 10 - 2
+        y = 23
+        while y > -2:
+            if self.checkvalidmove(
+                position=(x, y), rotation=rotation, piece=self.currentpiece
+            ) and self.checkdrop((x, y), rotation):
+                self.position = (x, y)
+                self.rotation = rotation
+
+            y -= 1
 
     def drop(self):
         # drop
@@ -514,7 +562,6 @@ class Player:
         self.totalpiece += 1
         self.gravityframe = 1
         self.tolerantframe = 1
-        self.aitrial = 0
         self.getpiece()
         self.spawnpiece()
 
@@ -1477,7 +1524,7 @@ class Player:
     def sendline(self, target: "Player", lines):
         self.linesent += lines
         print(self.linesent)
-        target.receivegarbage(lines)
+        # target.receivegarbage(lines)
 
     def countgarbage(self):
         if 0 < self.garbagebar <= 8:
@@ -1538,20 +1585,14 @@ class Player:
         inputs.extend(piecearray)
         inputs.append(btb)
         inputs.append(garbage)
-        inputs.append(self.aitrial)
         return inputs
 
     def receiveoutputs(self, outputarray):
-
-        height = outputarray[0 : self.height]
-        width = outputarray[self.height : self.height + self.width]
-        rotation = outputarray[self.height + self.width :]
-        y = np.where(height == max(height))[0][0]
+        width = outputarray[0 : self.width]
+        rotation = outputarray[self.width :]
         x = np.where(width == max(width))[0][0]
         r = np.where(rotation == max(rotation))[0][0] + 1
-        if self.checkvalidmove(position=(x, y), rotation=r, piece=self.currentpiece):
-            self.position = (x, y)
-            self.rotation = r
+        self.lowestpossiblemove(x, r)
 
 
 def create_offspring(p1, p2, tetrisgame):

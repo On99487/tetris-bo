@@ -6,6 +6,7 @@ from dev import (
     MUTATION_CUT_OFF,
     MUTATION_MIXING_RATE,
     MUTATION_MODIFY_CHANCE,
+    POPULATION,
 )
 import random
 import numpy as np
@@ -26,7 +27,7 @@ class Tetrisgame:
         self.playerleft = 1
         self.player = []
         self.alive = []
-        self.generationframe = 50
+        self.generationframe = GENERATION_PIECE
         self.generation = 0
         self.ypoint = []
         self.xpoint = []
@@ -34,8 +35,25 @@ class Tetrisgame:
         self.drawpieces()
         self.target()
         self.generation += 1
-        self.ani = FuncAnimation(plt.gcf(), self.animate, interval=1000)
-        plt.show()
+        self.start()
+
+    def start(self):
+        data = np.load("test.npz")
+
+        for x in range(POPULATION):
+            self.addplayer()
+            if x == 0 and data != None:
+                print("save1")
+                a = data["a"]
+                b = data["b"]
+                c = data["c"]
+                self.player[x].nnet.loaddata(a, b, c)
+            elif x == 1 and data != None:
+                print("save2")
+                a = data["d"]
+                b = data["e"]
+                c = data["f"]
+                self.player[x].nnet.loaddata(a, b, c)
 
     def animate(self):
         plt.cla()
@@ -43,11 +61,12 @@ class Tetrisgame:
 
     def reset(self):
         self.playerleft = len(self.player)
-        maxpiece = 0
+        max = 0
         for player in self.player:
-            if player.totalpiece > maxpiece:
-                maxpiece = player.totalpiece
-        self.generationframe = maxpiece + 50
+            if player.totalpiece > max:
+                max = player.totalpiece
+        if self.generation > 3:
+            self.generationframe = max * 2 + 50
         self.frame = 0
         self.evolve_population()
         self.alive = []
@@ -64,13 +83,13 @@ class Tetrisgame:
         self.playerleft = len(self.alive)
         for player in self.alive:
             player.gamestep()
-        if self.playerleft <= 1:
+        if self.playerleft <= 0:
             for player in self.alive:
                 self.winner = player
                 print(self.winner)
             print("winreset")
             self.reset()
-        elif self.frame == self.generation:
+        elif self.frame == self.generationframe:
             print("maxpiecereset")
             self.reset()
 
@@ -132,12 +151,27 @@ class Tetrisgame:
     def evolve_population(self):
         for b in self.player:
             b.fitness = (
-                b.totalpiece + b.linesent * 10 + b.garbagecleared * 10 + b.linesclear
+                b.totalpiece
+                + b.linesent * 10
+                + b.garbagecleared * 10
+                + b.linesclear * 10
             )
         self.player.sort(key=lambda x: x.fitness, reverse=True)
         self.xpoint.append(self.player[0].fitness)
-        for b in self.player[0:5]:
+        for i, b in enumerate(self.player[0:5]):
             print("fitness:", b.fitness)
+        a = self.player[0]
+        b = self.player[1]
+        np.savez(
+            "test.npz",
+            a=a.nnet.weight_input_hidden1,
+            b=a.nnet.weight_hidden1_hidden2,
+            c=a.nnet.weight_hidden2_output,
+            d=b.nnet.weight_input_hidden1,
+            e=b.nnet.weight_hidden1_hidden2,
+            f=b.nnet.weight_hidden2_output,
+        )
+
         cut_off = int(len(self.player) * MUTATION_CUT_OFF)
         good_player = self.player[0:cut_off]
         bad_player = self.player[cut_off:]
@@ -168,6 +202,6 @@ class Tetrisgame:
                     good_player[idx_to_breed[0]], good_player[idx_to_breed[1]], self
                 )
                 if random.random() < MUTATION_MODIFY_CHANCE:
-                    new_player.nnet.modify_weights()
+                    new_player.nnet.modify_weights_offspring()
                 new_players.append(new_player)
         self.player = new_players
